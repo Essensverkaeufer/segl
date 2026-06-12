@@ -1,0 +1,301 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>segl pet competition</title>
+  <style>
+    * { box-sizing: border-box; }
+    html, body {
+      margin: 0; width: 100%; height: 100%; overflow: hidden;
+      font-family: Arial, Helvetica, sans-serif; background: #000; color: white;
+    }
+    #catImage {
+      position: fixed; inset: 0; width: 100vw; height: 100vh;
+      object-fit: fill; user-select: none; -webkit-user-drag: none; z-index: 0;
+    }
+    .bottomBar {
+      position: fixed; left: 50%; bottom: 22px; transform: translateX(-50%);
+      width: min(760px, calc(100vw - 28px)); display: grid;
+      grid-template-columns: 1fr auto; gap: 12px; align-items: center; z-index: 3;
+    }
+    #petButton {
+      height: 84px; border: none; border-radius: 999px;
+      font-size: clamp(28px, 6vw, 48px); font-weight: 900; letter-spacing: 1px;
+      cursor: pointer; color: #111; background: rgba(255,255,255,.92);
+      box-shadow: 0 14px 45px rgba(0,0,0,.45); backdrop-filter: blur(10px);
+      transition: transform .06s ease, background .15s ease;
+    }
+    #petButton:active { transform: scale(.965); background: white; }
+    .smallControls { display: flex; flex-direction: column; gap: 8px; min-width: 150px; }
+    .smallButton, .pill {
+      border: none; border-radius: 999px; padding: 10px 14px; font-weight: 800;
+      background: rgba(0,0,0,.55); color: white; box-shadow: 0 8px 25px rgba(0,0,0,.35);
+      backdrop-filter: blur(10px);
+    }
+    .smallButton { cursor: pointer; }
+    .pill { text-align: center; font-size: 14px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+    .leaderboard {
+      position: fixed; top: 16px; left: 16px; z-index: 2; width: min(310px, calc(100vw - 32px));
+      border-radius: 24px; padding: 14px; background: rgba(0,0,0,.45);
+      box-shadow: 0 10px 38px rgba(0,0,0,.36); backdrop-filter: blur(10px);
+    }
+    .leaderboard h1 { margin: 0 0 10px; font-size: 18px; text-transform: lowercase; }
+    #leaderboardList { display: grid; gap: 6px; font-size: 14px; }
+    .leaderRow {
+      display: grid; grid-template-columns: 34px 1fr auto; gap: 8px; align-items: center;
+      padding: 8px 9px; border-radius: 14px; background: rgba(255,255,255,.10);
+    }
+    .leaderRow.me { outline: 2px solid rgba(255,255,255,.8); }
+    .count { font-weight: 900; }
+    .status {
+      position: fixed; right: 16px; top: 16px; z-index: 2; max-width: min(360px, calc(100vw - 32px));
+      border-radius: 999px; padding: 10px 14px; background: rgba(0,0,0,.45);
+      color: white; font-size: 14px; font-weight: 700; box-shadow: 0 10px 38px rgba(0,0,0,.36);
+      backdrop-filter: blur(10px);
+    }
+    .modalBackdrop {
+      position: fixed; inset: 0; z-index: 10; display: none; place-items: center;
+      background: rgba(0,0,0,.58); padding: 18px;
+    }
+    .modalBackdrop.open { display: grid; }
+    .modal {
+      width: min(410px, 100%); border-radius: 28px; padding: 20px;
+      background: rgba(10,10,10,.9); box-shadow: 0 18px 70px rgba(0,0,0,.55);
+      backdrop-filter: blur(16px);
+    }
+    .modal h2 { margin: 0 0 12px; text-transform: lowercase; }
+    .modal label { display: block; margin: 12px 0 6px; font-size: 13px; font-weight: 800; opacity: .9; text-transform: lowercase; }
+    .modal input {
+      width: 100%; border: 0; outline: 0; border-radius: 16px; padding: 13px 14px;
+      font-size: 16px; background: rgba(255,255,255,.12); color: white;
+    }
+    .modalButtons { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-top: 16px; }
+    .modal button { border: 0; border-radius: 999px; padding: 13px; font-weight: 900; cursor: pointer; }
+    .primary { background: white; color: #111; }
+    .secondary { background: rgba(255,255,255,.14); color: white; }
+    @media (max-width: 560px) {
+      .leaderboard { width: calc(100vw - 32px); }
+      .bottomBar { grid-template-columns: 1fr; }
+      .smallControls { flex-direction: row; min-width: 0; }
+      .smallControls > * { flex: 1; }
+    }
+  </style>
+</head>
+<body>
+  <img id="catImage" src="segl.jpg" alt="segl cat" />
+  <audio id="petSound" src="segl.mp3" preload="auto"></audio>
+
+  <section class="leaderboard" aria-label="leaderboard">
+    <h1>segl leaderboard</h1>
+    <div id="leaderboardList">loading...</div>
+  </section>
+
+  <div id="status" class="status">click save/login first</div>
+
+  <div class="bottomBar">
+    <button id="petButton">PET SEGL</button>
+    <div class="smallControls">
+      <div id="userPill" class="pill">guest · 0 pets</div>
+      <button id="loginOpenButton" class="smallButton">save/login</button>
+    </div>
+  </div>
+
+  <div id="authModal" class="modalBackdrop" role="dialog" aria-modal="true" aria-label="save progress">
+    <form id="authForm" class="modal">
+      <h2>save progress</h2>
+      <label for="usernameInput">username</label>
+      <input id="usernameInput" autocomplete="username" maxlength="20" placeholder="seglmaster" required />
+      <label for="passwordInput">password</label>
+      <input id="passwordInput" type="password" autocomplete="current-password" minlength="3" placeholder="password" required />
+      <div class="modalButtons">
+        <button class="secondary" type="button" id="registerButton">new save</button>
+        <button class="primary" type="submit">login</button>
+      </div>
+      <button class="secondary" type="button" id="closeModalButton" style="width:100%; margin-top:10px;">close</button>
+    </form>
+  </div>
+
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <script>
+    const SUPABASE_URL = "https://yrcodmwahedzifumawjq.supabase.co";
+    const SUPABASE_KEY = "sb_publishable_IPbGsipyQWlS-6Cgeu9ufQ_avADTemZ";
+
+    const clientReady = SUPABASE_KEY && !SUPABASE_KEY.includes("PASTE_YOUR");
+    const db = clientReady ? window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY) : null;
+
+    const petButton = document.getElementById("petButton");
+    const loginOpenButton = document.getElementById("loginOpenButton");
+    const authModal = document.getElementById("authModal");
+    const authForm = document.getElementById("authForm");
+    const registerButton = document.getElementById("registerButton");
+    const closeModalButton = document.getElementById("closeModalButton");
+    const usernameInput = document.getElementById("usernameInput");
+    const passwordInput = document.getElementById("passwordInput");
+    const userPill = document.getElementById("userPill");
+    const statusBox = document.getElementById("status");
+    const leaderboardList = document.getElementById("leaderboardList");
+    const petSound = document.getElementById("petSound");
+
+    let currentUser = JSON.parse(localStorage.getItem("segl_user") || "null");
+
+    function setStatus(message) { statusBox.textContent = message; }
+    function normalizeUsername(username) { return username.trim().toLowerCase(); }
+    function bytesToHex(buffer) { return [...new Uint8Array(buffer)].map(b => b.toString(16).padStart(2, "0")).join(""); }
+    function makeSalt() {
+      const bytes = new Uint8Array(16);
+      crypto.getRandomValues(bytes);
+      return bytesToHex(bytes.buffer);
+    }
+    async function hashPassword(password, salt) {
+      const encoder = new TextEncoder();
+      const key = await crypto.subtle.importKey("raw", encoder.encode(password), "PBKDF2", false, ["deriveBits"]);
+      const bits = await crypto.subtle.deriveBits(
+        { name: "PBKDF2", salt: encoder.encode(salt), iterations: 120000, hash: "SHA-256" },
+        key,
+        256
+      );
+      return bytesToHex(bits);
+    }
+    function saveUser(user) {
+      currentUser = user;
+      localStorage.setItem("segl_user", JSON.stringify(user));
+      updateUserUI(user.pet_count || 0);
+    }
+    function updateUserUI(count) {
+      if (!currentUser) {
+        userPill.textContent = "guest · 0 pets";
+        return;
+      }
+      currentUser.pet_count = Number(count || 0);
+      localStorage.setItem("segl_user", JSON.stringify(currentUser));
+      userPill.textContent = `${currentUser.username} · ${currentUser.pet_count} pets`;
+    }
+    function openModal() { authModal.classList.add("open"); usernameInput.focus(); }
+    function closeModal() { authModal.classList.remove("open"); passwordInput.value = ""; }
+
+    async function getSalt(username) {
+      const { data, error } = await db.rpc("segl_get_salt", { p_username: username });
+      if (error) throw error;
+      return data;
+    }
+    async function loginUser(username, password) {
+      const salt = await getSalt(username);
+      if (!salt) throw new Error("user not found");
+      const passwordHash = await hashPassword(password, salt);
+      const { data, error } = await db.rpc("segl_login", { p_username: username, p_password_hash: passwordHash });
+      if (error) throw error;
+      const row = Array.isArray(data) ? data[0] : data;
+      if (!row) throw new Error("wrong password");
+      saveUser({ username: row.username, passwordHash, pet_count: row.pet_count });
+      setStatus("logged in");
+      closeModal();
+      await loadLeaderboard();
+    }
+    async function registerUser(username, password) {
+      const salt = makeSalt();
+      const passwordHash = await hashPassword(password, salt);
+      const { data, error } = await db.rpc("segl_register", {
+        p_username: username,
+        p_password_hash: passwordHash,
+        p_password_salt: salt
+      });
+      if (error) throw error;
+      const row = Array.isArray(data) ? data[0] : data;
+      saveUser({ username: row.username, passwordHash, pet_count: row.pet_count });
+      setStatus("new save created");
+      closeModal();
+      await loadLeaderboard();
+    }
+    async function loadLeaderboard() {
+      if (!clientReady) {
+        leaderboardList.textContent = "add your Supabase publishable key in index.html";
+        return;
+      }
+      const { data, error } = await db.rpc("segl_leaderboard", { p_limit: 10 });
+      if (error) {
+        leaderboardList.textContent = "leaderboard error";
+        return;
+      }
+      if (!data || data.length === 0) {
+        leaderboardList.textContent = "no pets yet";
+        return;
+      }
+      leaderboardList.innerHTML = data.map(row => {
+        const me = currentUser && currentUser.username === row.username ? " me" : "";
+        return `<div class="leaderRow${me}">
+          <span>#${row.rank}</span>
+          <strong>${escapeHtml(row.username)}</strong>
+          <span class="count">${Number(row.pet_count).toLocaleString()}</span>
+        </div>`;
+      }).join("");
+    }
+    function escapeHtml(value) {
+      return String(value)
+        .replaceAll("&", "&amp;").replaceAll("<", "&lt;").replaceAll(">", "&gt;")
+        .replaceAll('"', "&quot;").replaceAll("'", "&#039;");
+    }
+    async function petSegl() {
+      petSound.currentTime = 0;
+      petSound.play().catch(() => {});
+      if (!clientReady) return setStatus("missing Supabase key in index.html");
+      if (!currentUser) {
+        setStatus("login first so pets save");
+        openModal();
+        return;
+      }
+      const oldCount = Number(currentUser.pet_count || 0);
+      updateUserUI(oldCount + 1);
+      const { data, error } = await db.rpc("segl_pet", {
+        p_username: currentUser.username,
+        p_password_hash: currentUser.passwordHash
+      });
+      if (error || !data || data.length === 0) {
+        updateUserUI(oldCount);
+        setStatus("pet failed, login again");
+        return;
+      }
+      updateUserUI(data[0].pet_count);
+      setStatus("segl has been pet");
+      loadLeaderboard();
+    }
+
+    petButton.addEventListener("click", petSegl);
+    loginOpenButton.addEventListener("click", openModal);
+    closeModalButton.addEventListener("click", closeModal);
+    authModal.addEventListener("click", event => { if (event.target === authModal) closeModal(); });
+    authForm.addEventListener("submit", async event => {
+      event.preventDefault();
+      if (!clientReady) return setStatus("missing Supabase key in index.html");
+      const username = normalizeUsername(usernameInput.value);
+      const password = passwordInput.value;
+      try {
+        setStatus("logging in...");
+        await loginUser(username, password);
+      } catch (error) {
+        setStatus(error.message || "login failed");
+      }
+    });
+    registerButton.addEventListener("click", async () => {
+      if (!clientReady) return setStatus("missing Supabase key in index.html");
+      const username = normalizeUsername(usernameInput.value);
+      const password = passwordInput.value;
+      try {
+        setStatus("creating save...");
+        await registerUser(username, password);
+      } catch (error) {
+        setStatus(error.message || "register failed");
+      }
+    });
+
+    if (currentUser) {
+      updateUserUI(currentUser.pet_count || 0);
+      setStatus("saved login loaded");
+    }
+    if (!clientReady) setStatus("paste Supabase publishable key in index.html");
+
+    loadLeaderboard();
+    setInterval(loadLeaderboard, 5000);
+  </script>
+</body>
+</html>
