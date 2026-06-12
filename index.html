@@ -74,6 +74,18 @@
     .modal button { border: 0; border-radius: 999px; padding: 13px; font-weight: 900; cursor: pointer; }
     .primary { background: white; color: #111; }
     .secondary { background: rgba(255,255,255,.14); color: white; }
+    .youtubeButton {
+      position: fixed; left: 16px; bottom: 16px; z-index: 4;
+      width: 54px; height: 54px; border-radius: 999px;
+      display: grid; place-items: center; text-decoration: none;
+      background: rgba(255,255,255,.92); color: #111;
+      font-size: 24px; font-weight: 900;
+      box-shadow: 0 10px 35px rgba(0,0,0,.42);
+      backdrop-filter: blur(10px);
+      transition: transform .08s ease, background .15s ease;
+    }
+    .youtubeButton:hover { background: white; transform: scale(1.05); }
+    .youtubeButton:active { transform: scale(.95); }
     @media (max-width: 560px) {
       .leaderboard { width: calc(100vw - 32px); }
       .bottomBar { grid-template-columns: 1fr; }
@@ -85,6 +97,7 @@
 <body>
   <img id="catImage" src="segl.jpg" alt="segl cat" />
   <audio id="petSound" src="segl.mp3" preload="auto"></audio>
+  <a class="youtubeButton" href="https://www.youtube.com/@segl99" target="_blank" rel="noopener noreferrer" aria-label="open segl youtube channel">▶</a>
 
   <section class="leaderboard" aria-label="leaderboard">
     <h1>segl leaderboard</h1>
